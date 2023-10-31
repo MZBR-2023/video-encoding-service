@@ -10,11 +10,11 @@ public enum EncodeFormat {
 
 	int width;
 	int height;
-	int bitRate;
+	int bitRateK;
 
-	EncodeFormat(int width, int height, int bitRate) {
+	EncodeFormat(int width, int height, int bitRateK) {
 		this.width = width;
 		this.height = height;
-		this.bitRate = bitRate;
+		this.bitRateK = bitRateK;
 	}
 }

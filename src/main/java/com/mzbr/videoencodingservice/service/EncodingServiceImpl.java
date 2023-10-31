@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 
 import com.github.kokorin.jaffree.ffmpeg.FFmpeg;
 import com.github.kokorin.jaffree.ffmpeg.Input;
+import com.github.kokorin.jaffree.ffmpeg.UrlOutput;
 import com.mzbr.videoencodingservice.enums.EncodeFormat;
 import com.mzbr.videoencodingservice.model.VideoSegment;
 import com.mzbr.videoencodingservice.repository.VideoSegmentRepository;
@@ -34,6 +35,7 @@ public class EncodingServiceImpl implements EncodingService{
 		fFmpeg.addInput(prepareVideoInput(videoSegment.getVideoUrl()));
 
 		//비디오 출력 설정
+		setVideoExport(encodeFormat, fileName, fFmpeg);
 
 		//비디오 생성
 		fFmpeg.execute();
@@ -45,6 +47,14 @@ public class EncodingServiceImpl implements EncodingService{
 
 		//임시 파일 삭제
 
+	}
+
+	private void setVideoExport(EncodeFormat encodeFormat, String fileName, FFmpeg fFmpeg) throws Exception {
+		fFmpeg.addOutput(UrlOutput.toPath(Path.of(fileName))
+			.addArguments("-g", "60")
+			.addArguments("-b:v", String.format("%dK", encodeFormat.getBitRateK()))
+			.addArguments("-vf", getScale(encodeFormat))
+		);
 	}
 
 	private String generateFileName(VideoSegment videoSegment, EncodeFormat encodeFormat) {
