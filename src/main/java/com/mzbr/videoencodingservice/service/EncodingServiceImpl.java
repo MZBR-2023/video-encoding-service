@@ -8,10 +8,12 @@ import org.springframework.stereotype.Service;
 
 import com.github.kokorin.jaffree.ffmpeg.FFmpeg;
 import com.github.kokorin.jaffree.ffmpeg.Input;
+import com.github.kokorin.jaffree.ffmpeg.UrlInput;
 import com.github.kokorin.jaffree.ffmpeg.UrlOutput;
 import com.mzbr.videoencodingservice.enums.EncodeFormat;
 import com.mzbr.videoencodingservice.model.VideoSegment;
 import com.mzbr.videoencodingservice.repository.VideoSegmentRepository;
+import com.mzbr.videoencodingservice.util.S3Util;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -21,6 +23,7 @@ import lombok.extern.slf4j.Slf4j;
 @RequiredArgsConstructor
 public class EncodingServiceImpl implements EncodingService{
 	private final VideoSegmentRepository videoSegmentRepository;
+	private final S3Util s3Util;
 
 	@Override
 	public void processVideo(Long videoSegmentId, EncodeFormat encodeFormat) throws Exception {
@@ -71,7 +74,7 @@ public class EncodingServiceImpl implements EncodingService{
 
 	@Override
 	public Input prepareVideoInput(String videoOriginUrl) throws Exception {
-		return null;
+		return  UrlInput.fromUrl(String.format("\"%s\"", s3Util.getPresigndUrl(videoOriginUrl)));
 	}
 
 	@Override
