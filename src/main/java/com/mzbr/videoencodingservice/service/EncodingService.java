@@ -8,7 +8,9 @@ public interface EncodingService {
 	void processVideo(Long videoSegmentId, EncodeFormat encodeFormat) throws Exception;
 	Input prepareVideoInput(String videoOriginUrl) throws Exception;
 	String getScale(EncodeFormat encodeFormat) throws Exception;
-	String executeVideo(FFmpeg fFmpeg) throws Exception;
+
+	String getFileAbsolutePath(String videoName) throws Exception;
+
 	void uploadToS3(String localFilePath, String uploadFilePath);
 	void deleteTemporaryFile(String localFilePath);
 }

@@ -23,4 +23,6 @@ public class VideoSegment {
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	Long id;
 	String videoUrl;
+	String videoName;
+	Integer videoSequence;
 }
