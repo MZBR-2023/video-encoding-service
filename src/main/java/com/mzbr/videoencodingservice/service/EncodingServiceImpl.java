@@ -76,7 +76,10 @@ public class EncodingServiceImpl implements EncodingService{
 
 	@Override
 	public String getScale(EncodeFormat encodeFormat) throws Exception {
-		return null;
+		StringBuilder stringBuilder = new StringBuilder("scale=");
+		stringBuilder.append(encodeFormat.getWidth()).append(":").append(encodeFormat.getHeight());
+
+		return stringBuilder.toString();
 	}
 
 	@Override
