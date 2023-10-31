@@ -17,4 +17,5 @@ logging:
   level:
     com.mzbr: DEBUG
     root: DEBUG
-
+folder:
+  prefix: "eocoded-video/"

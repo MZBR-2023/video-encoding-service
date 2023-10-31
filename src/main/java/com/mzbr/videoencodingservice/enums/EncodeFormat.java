@@ -6,7 +6,8 @@ import lombok.Getter;
 public enum EncodeFormat {
 	P720(720, 1280, 2000),
 	P480(480, 854, 700),
-	P360(360, 640, 500);
+	P360(360, 640, 500),
+	P144(144,256,150);
 
 	int width;
 	int height;

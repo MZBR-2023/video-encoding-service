@@ -4,6 +4,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import com.github.kokorin.jaffree.ffmpeg.FFmpeg;
@@ -25,6 +26,9 @@ public class EncodingServiceImpl implements EncodingService{
 	private final VideoSegmentRepository videoSegmentRepository;
 	private final S3Util s3Util;
 
+	@Value("${folder.prefix}")
+	String FOLDER_PREFIX;
+
 	@Override
 	public void processVideo(Long videoSegmentId, EncodeFormat encodeFormat) throws Exception {
 		//id로 비디오 불러오기
@@ -44,12 +48,22 @@ public class EncodingServiceImpl implements EncodingService{
 		fFmpeg.execute();
 
 
-		getFileAbsolutePath(fileName);
+		String filePath = getFileAbsolutePath(fileName);
+		String uploadPath = generateUploadPath(videoSegment,encodeFormat);
 
 		//s3 업로드
+		uploadToS3(filePath, uploadPath);
 
 		//임시 파일 삭제
 
+	}
+
+	private String generateUploadPath(VideoSegment videoSegment, EncodeFormat encodeFormat) {
+		StringBuilder stringBuilder = new StringBuilder(FOLDER_PREFIX);
+		stringBuilder.append(videoSegment.getVideoName()).append("/");
+		stringBuilder.append(encodeFormat.name()).append("/");
+		stringBuilder.append(videoSegment.getVideoSequence()).append(".ts");
+		return stringBuilder.toString();
 	}
 
 	private void setVideoExport(EncodeFormat encodeFormat, String fileName, FFmpeg fFmpeg) throws Exception {
@@ -99,7 +113,7 @@ public class EncodingServiceImpl implements EncodingService{
 
 	@Override
 	public void uploadToS3(String localFilePath, String uploadFilePath) {
-
+		s3Util.uploadFile(localFilePath,uploadFilePath);
 	}
 
 	@Override
