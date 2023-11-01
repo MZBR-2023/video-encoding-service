@@ -1,5 +1,6 @@
 package com.mzbr.videoencodingservice.service;
 
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -28,17 +29,19 @@ public class EncodingServiceImpl implements EncodingService {
 	private final VideoSegmentRepository videoSegmentRepository;
 	private final EncodedVideoSegmentRepository encodedVideoSegmentRepository;
 	private final S3Util s3Util;
+	private static final String CURRENT_WORKING_DIR = System.getProperty("user.dir");
 
 	@Value("${folder.prefix}")
 	String FOLDER_PREFIX;
 
 	@Override
 	public void processVideo(Long videoSegmentId, EncodeFormat encodeFormat) throws Exception {
+
 		//id로 비디오 불러오기
 		VideoSegment videoSegment = videoSegmentRepository.findById(videoSegmentId).orElseThrow();
 
 		String fileName = generateFileName(videoSegment, encodeFormat);
-
+		String filePath = CURRENT_WORKING_DIR + "/" + fileName;
 		FFmpeg fFmpeg = FFmpeg.atPath();
 
 		//input 준비
@@ -46,20 +49,23 @@ public class EncodingServiceImpl implements EncodingService {
 
 		//비디오 출력 설정
 		setVideoExport(encodeFormat, fileName, fFmpeg);
+		try {
+			//비디오 생성
+			fFmpeg.execute();
+			String uploadPath = generateUploadPath(videoSegment, encodeFormat);
 
-		//비디오 생성
-		fFmpeg.execute();
+			//s3 업로드
+			uploadToS3(filePath, uploadPath);
 
-		String filePath = getFileAbsolutePath(fileName);
-		String uploadPath = generateUploadPath(videoSegment, encodeFormat);
+			//DB에 저장
+			createAndSaveEncodedSegment(encodeFormat, videoSegment, uploadPath);
 
-		//s3 업로드
-		uploadToS3(filePath, uploadPath);
-
-		//DB에 저장
-		createAndSaveEncodedSegment(encodeFormat, videoSegment, uploadPath);
-
-		//임시 파일 삭제
+		} finally {
+			//임시 파일 삭제
+			if (Files.exists(Path.of(filePath))) {
+				deleteTemporaryFile(filePath);
+			}
+		}
 
 	}
 
@@ -131,7 +137,7 @@ public class EncodingServiceImpl implements EncodingService {
 	}
 
 	@Override
-	public void deleteTemporaryFile(String localFilePath) {
-
+	public void deleteTemporaryFile(String localFilePath) throws IOException {
+		Files.delete(Path.of(localFilePath));
 	}
 }

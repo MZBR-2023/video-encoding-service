@@ -3,6 +3,8 @@ package com.mzbr.videoencodingservice.model;
 import javax.persistence.Entity;
 import javax.persistence.EnumType;
 import javax.persistence.Enumerated;
+import javax.persistence.GeneratedValue;
+import javax.persistence.GenerationType;
 import javax.persistence.Id;
 import javax.persistence.JoinColumn;
 import javax.persistence.ManyToOne;
@@ -13,6 +15,7 @@ import com.mzbr.videoencodingservice.enums.EncodeFormat;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
+import lombok.Generated;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
@@ -24,6 +27,7 @@ import lombok.NoArgsConstructor;
 @Table(name = "encoded_video_segment")
 public class EncodedVideoSegment {
 	@Id
+	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	Long id;
 	String url;
 
