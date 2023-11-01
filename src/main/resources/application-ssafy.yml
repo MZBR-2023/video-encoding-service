@@ -13,9 +13,9 @@ spring:
       ddl-auto: create
   config:
     import: s3-local.yml
-logging:
-  level:
-    com.mzbr: DEBUG
-    root: DEBUG
+#logging:
+#  level:
+#    com.mzbr: DEBUG
+#    root: DEBUG
 folder:
-  prefix: "eocoded-video/"
+  prefix: "encoded-video/"

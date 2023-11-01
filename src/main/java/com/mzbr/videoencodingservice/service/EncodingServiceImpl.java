@@ -93,7 +93,8 @@ public class EncodingServiceImpl implements EncodingService {
 	private void setVideoExport(EncodeFormat encodeFormat, String fileName, FFmpeg fFmpeg) throws Exception {
 		fFmpeg.addOutput(UrlOutput.toPath(Path.of(fileName))
 			.addArguments("-g", "60")
-			.addArguments("-b:v", encodeFormat + "K")
+			.addArguments("-b:v", encodeFormat.getBitRateK() + "K")
+			.addArguments("-c:v", "libx264")
 			.addArguments("-vf", getScale(encodeFormat))
 		);
 	}

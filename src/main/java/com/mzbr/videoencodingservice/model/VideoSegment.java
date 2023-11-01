@@ -11,6 +11,7 @@ import lombok.Builder;
 import lombok.Generated;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.ToString;
 
 @Getter
 @Entity
@@ -18,6 +19,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @Builder
 @Table(name = "videoSegment")
+@ToString
 public class VideoSegment {
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
