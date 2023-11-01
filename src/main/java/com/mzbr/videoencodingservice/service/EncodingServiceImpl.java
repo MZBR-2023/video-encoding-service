@@ -3,7 +3,6 @@ package com.mzbr.videoencodingservice.service;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -39,34 +38,39 @@ public class EncodingServiceImpl implements EncodingService {
 
 		//id로 비디오 불러오기
 		VideoSegment videoSegment = videoSegmentRepository.findById(videoSegmentId).orElseThrow();
-
 		String fileName = generateFileName(videoSegment, encodeFormat);
 		String filePath = CURRENT_WORKING_DIR + "/" + fileName;
-		FFmpeg fFmpeg = FFmpeg.atPath();
 
-		//input 준비
-		fFmpeg.addInput(prepareVideoInput(videoSegment.getVideoUrl()));
-
-		//비디오 출력 설정
-		setVideoExport(encodeFormat, fileName, fFmpeg);
 		try {
-			//비디오 생성
-			fFmpeg.execute();
-			String uploadPath = generateUploadPath(videoSegment, encodeFormat);
+			//FFmpeg을 이용한 비디오 변환
+			convertVideo(encodeFormat, videoSegment, fileName);
 
-			//s3 업로드
-			uploadToS3(filePath, uploadPath);
-
-			//DB에 저장
-			createAndSaveEncodedSegment(encodeFormat, videoSegment, uploadPath);
-
+			//S3 스토리지에 업로드 후 DB에 값 저장
+			uploadAndSave(encodeFormat, videoSegment, filePath);
 		} finally {
 			//임시 파일 삭제
 			if (Files.exists(Path.of(filePath))) {
 				deleteTemporaryFile(filePath);
 			}
 		}
+	}
 
+	private void uploadAndSave(EncodeFormat encodeFormat, VideoSegment videoSegment, String filePath) {
+		String uploadPath = generateUploadPath(videoSegment, encodeFormat);
+		//s3 업로드
+		uploadToS3(filePath, uploadPath);
+		//DB에 저장
+		createAndSaveEncodedSegment(encodeFormat, videoSegment, uploadPath);
+	}
+
+	private void convertVideo(EncodeFormat encodeFormat, VideoSegment videoSegment, String fileName) throws Exception {
+		FFmpeg fFmpeg = FFmpeg.atPath();
+		//input 준비
+		fFmpeg.addInput(prepareVideoInput(videoSegment.getVideoUrl()));
+		//비디오 출력 설정
+		setVideoExport(encodeFormat, fileName, fFmpeg);
+		//비디오 생성
+		fFmpeg.execute();
 	}
 
 	private void createAndSaveEncodedSegment(EncodeFormat encodeFormat, VideoSegment videoSegment, String uploadPath) {
@@ -79,17 +83,17 @@ public class EncodingServiceImpl implements EncodingService {
 	}
 
 	private String generateUploadPath(VideoSegment videoSegment, EncodeFormat encodeFormat) {
-		StringBuilder stringBuilder = new StringBuilder(FOLDER_PREFIX);
-		stringBuilder.append(videoSegment.getVideoName()).append("/");
-		stringBuilder.append(encodeFormat.name()).append("/");
-		stringBuilder.append(videoSegment.getVideoSequence()).append(".ts");
-		return stringBuilder.toString();
+		StringBuilder uploadPath = new StringBuilder(FOLDER_PREFIX);
+		uploadPath.append(videoSegment.getVideoName()).append("/");
+		uploadPath.append(encodeFormat.name()).append("/");
+		uploadPath.append(videoSegment.getVideoSequence()).append(".ts");
+		return uploadPath.toString();
 	}
 
 	private void setVideoExport(EncodeFormat encodeFormat, String fileName, FFmpeg fFmpeg) throws Exception {
 		fFmpeg.addOutput(UrlOutput.toPath(Path.of(fileName))
 			.addArguments("-g", "60")
-			.addArguments("-b:v", String.format("%dK", encodeFormat.getBitRateK()))
+			.addArguments("-b:v", encodeFormat + "K")
 			.addArguments("-vf", getScale(encodeFormat))
 		);
 	}
@@ -117,18 +121,6 @@ public class EncodingServiceImpl implements EncodingService {
 		stringBuilder.append(encodeFormat.getWidth()).append(":").append(encodeFormat.getHeight());
 
 		return stringBuilder.toString();
-	}
-
-	@Override
-	public String getFileAbsolutePath(String videoName) throws Exception {
-		String projectRootPath = System.getProperty("user.dir");
-		Path directory = Paths.get(projectRootPath);
-
-		Path filePath = directory.resolve(videoName);
-		if (Files.exists(filePath)) {
-			return filePath.toFile().getAbsolutePath();
-		}
-		throw new IllegalArgumentException("파일 검색 불가");
 	}
 
 	@Override

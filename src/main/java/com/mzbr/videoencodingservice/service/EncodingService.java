@@ -11,8 +11,6 @@ public interface EncodingService {
 	Input prepareVideoInput(String videoOriginUrl) throws Exception;
 	String getScale(EncodeFormat encodeFormat) throws Exception;
 
-	String getFileAbsolutePath(String videoName) throws Exception;
-
 	void uploadToS3(String localFilePath, String uploadFilePath);
 	void deleteTemporaryFile(String localFilePath) throws IOException;
 }
