@@ -12,7 +12,9 @@ import com.github.kokorin.jaffree.ffmpeg.Input;
 import com.github.kokorin.jaffree.ffmpeg.UrlInput;
 import com.github.kokorin.jaffree.ffmpeg.UrlOutput;
 import com.mzbr.videoencodingservice.enums.EncodeFormat;
+import com.mzbr.videoencodingservice.model.EncodedVideoSegment;
 import com.mzbr.videoencodingservice.model.VideoSegment;
+import com.mzbr.videoencodingservice.repository.EncodedVideoSegmentRepository;
 import com.mzbr.videoencodingservice.repository.VideoSegmentRepository;
 import com.mzbr.videoencodingservice.util.S3Util;
 
@@ -22,8 +24,9 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class EncodingServiceImpl implements EncodingService{
+public class EncodingServiceImpl implements EncodingService {
 	private final VideoSegmentRepository videoSegmentRepository;
+	private final EncodedVideoSegmentRepository encodedVideoSegmentRepository;
 	private final S3Util s3Util;
 
 	@Value("${folder.prefix}")
@@ -47,15 +50,26 @@ public class EncodingServiceImpl implements EncodingService{
 		//비디오 생성
 		fFmpeg.execute();
 
-
 		String filePath = getFileAbsolutePath(fileName);
-		String uploadPath = generateUploadPath(videoSegment,encodeFormat);
+		String uploadPath = generateUploadPath(videoSegment, encodeFormat);
 
 		//s3 업로드
 		uploadToS3(filePath, uploadPath);
 
+		//DB에 저장
+		createAndSaveEncodedSegment(encodeFormat, videoSegment, uploadPath);
+
 		//임시 파일 삭제
 
+	}
+
+	private void createAndSaveEncodedSegment(EncodeFormat encodeFormat, VideoSegment videoSegment, String uploadPath) {
+		EncodedVideoSegment encodedVideoSegment = EncodedVideoSegment.builder()
+			.encodeFormat(encodeFormat)
+			.videoSegment(videoSegment)
+			.url(uploadPath)
+			.build();
+		encodedVideoSegmentRepository.save(encodedVideoSegment);
 	}
 
 	private String generateUploadPath(VideoSegment videoSegment, EncodeFormat encodeFormat) {
@@ -88,7 +102,7 @@ public class EncodingServiceImpl implements EncodingService{
 
 	@Override
 	public Input prepareVideoInput(String videoOriginUrl) throws Exception {
-		return  UrlInput.fromUrl(String.format("\"%s\"", s3Util.getPresigndUrl(videoOriginUrl)));
+		return UrlInput.fromUrl(String.format("\"%s\"", s3Util.getPresigndUrl(videoOriginUrl)));
 	}
 
 	@Override
@@ -105,7 +119,7 @@ public class EncodingServiceImpl implements EncodingService{
 		Path directory = Paths.get(projectRootPath);
 
 		Path filePath = directory.resolve(videoName);
-		if(Files.exists(filePath)){
+		if (Files.exists(filePath)) {
 			return filePath.toFile().getAbsolutePath();
 		}
 		throw new IllegalArgumentException("파일 검색 불가");
@@ -113,7 +127,7 @@ public class EncodingServiceImpl implements EncodingService{
 
 	@Override
 	public void uploadToS3(String localFilePath, String uploadFilePath) {
-		s3Util.uploadFile(localFilePath,uploadFilePath);
+		s3Util.uploadFile(localFilePath, uploadFilePath);
 	}
 
 	@Override
