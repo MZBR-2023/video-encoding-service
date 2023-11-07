@@ -36,8 +36,8 @@ class VideoEncodingServiceApplicationTests {
 		VideoSegment videoSegment =
 			VideoSegment.builder()
 				.id(1L)
-				.videoName("2540a249-fd82-4ab1-ad15-620c5eb0f807")
-				.videoUrl("video/2540a249-fd82-4ab1-ad15-620c5eb0f807/2540a249-fd82-4ab1-ad15-620c5eb0f807[000].mov")
+				.videoName("76417bc4-2d6f-4e43-affd-d511baffce50")
+				.videoUrl("s3Test/76417bc4-2d6f-4e43-affd-d511baffce50/76417bc4-2d6f-4e43-affd-d511baffce50[000].mov")
 				.videoSequence(0)
 				.build();
 		videoSegmentRepository.save(videoSegment);
@@ -53,9 +53,9 @@ class VideoEncodingServiceApplicationTests {
 			VideoSegment videoSegment =
 				VideoSegment.builder()
 					.id(Long.valueOf(i+1))
-					.videoName("2540a249-fd82-4ab1-ad15-620c5eb0f807")
+					.videoName("20e51223-faa8-463f-88bb-96a1f02c0c0d")
 					.videoUrl(String.format(
-						"video/2540a249-fd82-4ab1-ad15-620c5eb0f807/2540a249-fd82-4ab1-ad15-620c5eb0f807[%03d].mov", i))
+						"s3Test/20e51223-faa8-463f-88bb-96a1f02c0c0d/%03d.mov", i))
 					.videoSequence(i)
 					.build();
 			videoSegmentList.add(videoSegment);

@@ -86,16 +86,19 @@ public class EncodingServiceImpl implements EncodingService {
 		StringBuilder uploadPath = new StringBuilder(FOLDER_PREFIX);
 		uploadPath.append(videoSegment.getVideoName()).append("/");
 		uploadPath.append(encodeFormat.name()).append("/");
-		uploadPath.append(videoSegment.getVideoSequence()).append(".ts");
+		uploadPath.append(String.format("%03d",videoSegment.getVideoSequence())).append(".ts");
 		return uploadPath.toString();
 	}
 
 	private void setVideoExport(EncodeFormat encodeFormat, String fileName, FFmpeg fFmpeg) throws Exception {
 		fFmpeg.addOutput(UrlOutput.toPath(Path.of(fileName))
-			.addArguments("-g", "60")
-			.addArguments("-b:v", encodeFormat.getBitRateK() + "K")
-			.addArguments("-c:v", "libx264")
-			.addArguments("-vf", getScale(encodeFormat))
+				.addArguments("-c:v", "libx264")
+				.addArguments("-profile:v", "baseline")
+				.addArguments("-c:a", "aac")
+				.addArguments("-vf", getScale(encodeFormat))
+				.addArguments("-b:v", encodeFormat.getBitRateK() + "K")
+				.addArgument("-copyts")
+
 		);
 	}
 
