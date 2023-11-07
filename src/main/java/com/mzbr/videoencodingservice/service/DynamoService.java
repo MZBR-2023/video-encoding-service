@@ -57,7 +57,7 @@ public class DynamoService {
 		String newStatus) {
 		Map<String, AttributeValue> key = Collections.singletonMap(idName, AttributeValue.builder().s(id).build());
 		Map<String, AttributeValueUpdate> updates = Collections.singletonMap(
-			newStatus,
+			statusName,
 			AttributeValueUpdate.builder()
 				.value(AttributeValue.builder().s(newStatus).build())
 				.action(AttributeAction.PUT)

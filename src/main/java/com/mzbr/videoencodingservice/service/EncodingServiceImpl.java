@@ -4,7 +4,10 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Service;
 
 import com.github.kokorin.jaffree.ffmpeg.FFmpeg;
@@ -33,8 +36,14 @@ public class EncodingServiceImpl implements EncodingService {
 	@Value("${folder.prefix}")
 	String FOLDER_PREFIX;
 
+	private static final Logger logger = LoggerFactory.getLogger(EncodingServiceImpl.class);
+
+
+
+
 	@Override
 	public void processVideo(Long videoSegmentId, EncodeFormat encodeFormat) throws Exception {
+
 
 		//id로 비디오 불러오기
 		VideoSegment videoSegment = videoSegmentRepository.findById(videoSegmentId).orElseThrow();
@@ -47,7 +56,15 @@ public class EncodingServiceImpl implements EncodingService {
 
 			//S3 스토리지에 업로드 후 DB에 값 저장
 			uploadAndSave(encodeFormat, videoSegment, filePath);
-		} finally {
+
+			log.info("VideoSegmentId: {}, EncodeFormat: {}, Status: Success",
+				videoSegmentId, encodeFormat);
+		}catch (Exception e){
+			log.error("VideoSegmentId: {}, EncodeFormat: {}, Status: Failure, Error: {}",
+				videoSegmentId, encodeFormat, e.getMessage());
+		}
+
+		finally {
 			//임시 파일 삭제
 			if (Files.exists(Path.of(filePath))) {
 				deleteTemporaryFile(filePath);

@@ -11,6 +11,7 @@ import java.util.NoSuchElementException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 
+import com.mzbr.videoencodingservice.VideoEncodingServiceApplication;
 import com.mzbr.videoencodingservice.enums.EncodeFormat;
 import com.mzbr.videoencodingservice.model.VideoEncodingDynamoTable;
 
@@ -76,7 +77,12 @@ public class KinesisConsumerService {
 		getRecordsFuture.thenAcceptAsync(getRecordsResponse -> {
 			getRecordsResponse.records().forEach(record -> {
 				String data = StandardCharsets.UTF_8.decode(record.data().asByteBuffer()).toString();
-				updateAndProcessJob(data);
+				try {
+					updateAndProcessJob(data);
+				}catch (Exception e){
+					e.printStackTrace();
+				}
+
 			});
 
 			String nextShardIterator = getRecordsResponse.nextShardIterator();
@@ -94,9 +100,12 @@ public class KinesisConsumerService {
 
 	@Async
 	public CompletableFuture<Void> updateAndProcessJob(String id) {
+
 		return CompletableFuture.supplyAsync(() -> {
 			VideoEncodingDynamoTable videoEncodingDynamoTable = dynamoService.getVideoEncodingDynamoTable(JOB_TABLE, JOB_ID, id);
-
+			if(videoEncodingDynamoTable==null){
+				return null;
+			}
 			if (!WAITING_STATUS.equals(videoEncodingDynamoTable.getStatus())) {
 				return null;
 			}
@@ -106,6 +115,9 @@ public class KinesisConsumerService {
 
 			return videoEncodingDynamoTable;
 		}).thenCompose(videoEncodingDynamoTable -> {
+			if (videoEncodingDynamoTable == null) {
+				return CompletableFuture.completedFuture(null);
+			}
 			return processJob(videoEncodingDynamoTable);
 		}).thenRun(() -> {
 			updateJobStatus(id, COMPLETED_STATUS);
