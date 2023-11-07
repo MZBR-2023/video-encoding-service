@@ -18,4 +18,13 @@ public enum EncodeFormat {
 		this.height = height;
 		this.bitRateK = bitRateK;
 	}
+
+	public static EncodeFormat getFormatByString(String formatString) {
+		for (EncodeFormat value : EncodeFormat.values()) {
+			if (formatString.equals(value.name())) {
+				return value;
+			}
+		}
+		throw new IllegalArgumentException("잘못된 formatString");
+	}
 }
