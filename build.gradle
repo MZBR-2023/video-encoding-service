@@ -42,6 +42,7 @@ dependencies {
     implementation group: 'software.amazon.awssdk', name: 'kinesis', version: '2.21.13'
     implementation group: 'software.amazon.awssdk', name: 'dynamodb', version: '2.21.12'
     implementation group: 'software.amazon.awssdk', name: 'dynamodb-enhanced', version: '2.21.15'
+    implementation group: 'org.mariadb.jdbc', name: 'mariadb-java-client', version: '3.2.0'
 
 }
 

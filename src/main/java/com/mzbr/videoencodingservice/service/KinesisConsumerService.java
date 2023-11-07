@@ -104,8 +104,7 @@ public class KinesisConsumerService {
 
 			return videoEncodingDynamoTable;
 		}).thenCompose(videoEncodingDynamoTable -> {
-			processJob(videoEncodingDynamoTable);
-			return null;
+			return processJob(videoEncodingDynamoTable);
 		}).thenRun(() -> {
 			updateJobStatus(id, COMPLETED_STATUS);
 		}).exceptionally(e -> {
