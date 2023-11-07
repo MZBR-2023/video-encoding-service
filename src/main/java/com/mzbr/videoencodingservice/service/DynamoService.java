@@ -13,9 +13,12 @@ import lombok.RequiredArgsConstructor;
 import software.amazon.awssdk.enhanced.dynamodb.DynamoDbEnhancedClient;
 import software.amazon.awssdk.enhanced.dynamodb.TableSchema;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
+import software.amazon.awssdk.services.dynamodb.model.AttributeAction;
 import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
+import software.amazon.awssdk.services.dynamodb.model.AttributeValueUpdate;
 import software.amazon.awssdk.services.dynamodb.model.GetItemRequest;
 import software.amazon.awssdk.services.dynamodb.model.GetItemResponse;
+import software.amazon.awssdk.services.dynamodb.model.ReturnValue;
 import software.amazon.awssdk.services.dynamodb.model.UpdateItemRequest;
 import software.amazon.awssdk.services.dynamodb.model.UpdateItemResponse;
 
@@ -52,13 +55,20 @@ public class DynamoService {
 
 	public UpdateItemResponse updateStatus(String tableName, String idName, String statusName, String id,
 		String newStatus) {
-		return dynamoDbClient.updateItem(UpdateItemRequest.builder()
+		Map<String, AttributeValue> key = Collections.singletonMap(idName, AttributeValue.builder().s(id).build());
+		Map<String, AttributeValueUpdate> updates = Collections.singletonMap(
+			newStatus,
+			AttributeValueUpdate.builder()
+				.value(AttributeValue.builder().s(newStatus).build())
+				.action(AttributeAction.PUT)
+				.build());
+
+		UpdateItemRequest updateItemRequest = UpdateItemRequest.builder()
 			.tableName(tableName)
-			.key(Collections.singletonMap(idName, AttributeValue.builder().s(String.valueOf(id)).build()))
-			.updateExpression("SET #status = :newStatus")
-			.expressionAttributeNames(Collections.singletonMap("#status", statusName))
-			.expressionAttributeValues(
-				Collections.singletonMap(":newStatus", AttributeValue.builder().s(newStatus).build()))
-			.build());
+			.key(key)
+			.attributeUpdates(updates)
+			.returnValues(ReturnValue.ALL_OLD.toString())
+			.build();
+		return dynamoDbClient.updateItem(updateItemRequest);
 	}
 }

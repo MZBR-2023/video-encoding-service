@@ -11,12 +11,13 @@ import java.util.NoSuchElementException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 
-import com.mzbr.videoencodingservice.VideoEncodingServiceApplication;
 import com.mzbr.videoencodingservice.enums.EncodeFormat;
 import com.mzbr.videoencodingservice.model.VideoEncodingDynamoTable;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
+import software.amazon.awssdk.services.dynamodb.model.UpdateItemResponse;
 import software.amazon.awssdk.services.kinesis.KinesisAsyncClient;
 import software.amazon.awssdk.services.kinesis.model.GetRecordsRequest;
 import software.amazon.awssdk.services.kinesis.model.GetRecordsResponse;
@@ -100,7 +101,8 @@ public class KinesisConsumerService {
 				return null;
 			}
 
-			updateJobStatus(id, IN_PROGRESS_STATUS);
+			if (updateStatusToInProgressIfWaiting(id))
+				return null;
 
 			return videoEncodingDynamoTable;
 		}).thenCompose(videoEncodingDynamoTable -> {
@@ -117,8 +119,14 @@ public class KinesisConsumerService {
 
 	}
 
-	private void updateJobStatus(String id, String newStatus) {
-		dynamoService.updateStatus(JOB_TABLE, JOB_ID, STATUS, id, newStatus);
+	private boolean updateStatusToInProgressIfWaiting(String id) {
+		UpdateItemResponse updateItemResponse = updateJobStatus(id, IN_PROGRESS_STATUS);
+		AttributeValue oldStatusValue = updateItemResponse.attributes().get(STATUS);
+		return oldStatusValue == null || !WAITING_STATUS.equals(oldStatusValue.s());
+	}
+
+	private UpdateItemResponse updateJobStatus(String id, String newStatus) {
+		return dynamoService.updateStatus(JOB_TABLE, JOB_ID, STATUS, id, newStatus);
 	}
 
 	private CompletableFuture<Void> processJob(VideoEncodingDynamoTable videoEncodingDynamoTable) {
