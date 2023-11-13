@@ -1,15 +1,22 @@
 package com.mzbr.videoencodingservice.util;
 
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.OutputStream;
 import java.nio.file.Path;
 import java.time.Duration;
+import java.util.UUID;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import lombok.RequiredArgsConstructor;
+import software.amazon.awssdk.core.ResponseBytes;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
+import software.amazon.awssdk.services.s3.model.GetObjectResponse;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest;
@@ -45,5 +52,25 @@ public class S3Util {
 
 		PresignedGetObjectRequest presignedGetObjectRequest = s3Presigner.presignGetObject(getObjectPresignRequest);
 		return presignedGetObjectRequest.url().toString();
+	}
+	public Path getFileToLocalDirectory(String fileName) throws IOException {
+		GetObjectRequest getObjectRequest = GetObjectRequest.builder()
+			.bucket(BUCKET_NAME)
+			.key(fileName)
+			.build();
+		ResponseBytes<GetObjectResponse> objectBytes = s3Client.getObjectAsBytes(getObjectRequest);
+		byte[] data = objectBytes.asByteArray();
+
+		String extension = "";
+		int i = fileName.lastIndexOf('.');
+		if (i > 0) {
+			extension = fileName.substring(i);
+		}
+
+		File myFile = new File(UUID.randomUUID()+ extension);
+		OutputStream os = new FileOutputStream(myFile);
+		os.write(data);
+		os.close();
+		return myFile.getAbsoluteFile().toPath();
 	}
 }

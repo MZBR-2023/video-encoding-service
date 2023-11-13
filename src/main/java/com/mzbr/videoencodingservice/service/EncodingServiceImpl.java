@@ -65,12 +65,26 @@ public class EncodingServiceImpl implements EncodingService {
 
 	private void convertVideo(EncodeFormat encodeFormat, VideoSegment videoSegment, String fileName) throws Exception {
 		FFmpeg fFmpeg = FFmpeg.atPath();
+
 		//input 준비
-		fFmpeg.addInput(prepareVideoInput(videoSegment.getVideoUrl()));
+		Path path = s3Util.getFileToLocalDirectory(videoSegment.getVideoUrl());
+		fFmpeg.addInput(UrlInput.fromPath(path));
+		// fFmpeg.addInput(prepareVideoInput(videoSegment.getVideoUrl()));
 		//비디오 출력 설정
-		setVideoExport(encodeFormat, fileName, fFmpeg);
-		//비디오 생성
-		fFmpeg.execute();
+		try{
+			setVideoExport(encodeFormat, fileName, fFmpeg);
+			//비디오 생성
+			fFmpeg.execute();
+		}finally {
+			try {
+				Files.delete(path);
+				log.info("Deleted file: {}", path);
+			} catch (IOException e) {
+				log.info("File delete fail.");
+			}
+		}
+
+
 	}
 
 	private void createAndSaveEncodedSegment(EncodeFormat encodeFormat, VideoSegment videoSegment, String uploadPath) {
