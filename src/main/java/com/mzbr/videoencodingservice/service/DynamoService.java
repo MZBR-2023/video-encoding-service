@@ -1,17 +1,20 @@
 package com.mzbr.videoencodingservice.service;
 
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import com.mzbr.videoencodingservice.enums.EncodeFormat;
 import com.mzbr.videoencodingservice.model.VideoEncodingDynamoTable;
 
 import lombok.RequiredArgsConstructor;
 import software.amazon.awssdk.enhanced.dynamodb.DynamoDbEnhancedClient;
-import software.amazon.awssdk.enhanced.dynamodb.TableSchema;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 import software.amazon.awssdk.services.dynamodb.model.AttributeAction;
 import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
@@ -28,10 +31,13 @@ public class DynamoService {
 
 	private final DynamoDbClient dynamoDbClient;
 	private final DynamoDbEnhancedClient dynamoDbEnhancedClient;
-
+	private final M3U8Service m3U8Service;
 
 	@Value("${cloud.dynamo.encoding-table}")
 	private String ENCODING_TABLE_NAME;
+
+	@Value("${cloud.dynamo.status-table}")
+	private String STATUS_TABLE_NAME;
 
 	public VideoEncodingDynamoTable getVideoEncodingDynamoTable(String tableName, String idName, String id) {
 		GetItemResponse response = dynamoDbClient.getItem(GetItemRequest.builder()
@@ -40,7 +46,7 @@ public class DynamoService {
 			.build());
 
 		if (response == null || response.item() == null || response.item().isEmpty()) {
-			throw new NoSuchElementException(id+"의 데이터는 존재하지 않습니다.");
+			throw new NoSuchElementException(id + "의 데이터는 존재하지 않습니다.");
 		}
 
 		Map<String, AttributeValue> item = response.item();
@@ -70,5 +76,62 @@ public class DynamoService {
 			.returnValues(ReturnValue.ALL_OLD.toString())
 			.build();
 		return dynamoDbClient.updateItem(updateItemRequest);
+	}
+
+	public void updateEncodingStatusToTrue(Long id, EncodeFormat format, int index) throws Exception {
+		String attributeName = getStatusAttributeName(format);
+
+		String updateExpression = String.format("SET %s[%d] = :status", attributeName, index);
+
+		Map<String, AttributeValue> expressionAttributeValues = new HashMap<>();
+		expressionAttributeValues.put(":status", AttributeValue.builder().bool(true).build());
+
+		UpdateItemRequest updateItemRequest = UpdateItemRequest.builder()
+			.tableName(STATUS_TABLE_NAME)
+			.key(Map.of("id", AttributeValue.builder().n(String.valueOf(id)).build()))
+			.updateExpression(updateExpression)
+			.expressionAttributeValues(expressionAttributeValues)
+			.returnValues(ReturnValue.ALL_NEW)
+			.build();
+
+		UpdateItemResponse updateItemResponse = dynamoDbClient.updateItem(updateItemRequest);
+		Map<String, AttributeValue> updatedAttributes = updateItemResponse.attributes();
+		checkUpdateAll(id, updatedAttributes, format);
+	}
+
+	private void checkUpdateAll(Long id, Map<String, AttributeValue> updatedAttributes, EncodeFormat encodeFormat) throws
+		Exception {
+		System.out.println(updatedAttributes);
+		List<AttributeValue> resStatuses = updatedAttributes.get(encodeFormat.getStatusName()).l();
+		boolean isResolutionComplete = resStatuses.stream().allMatch(AttributeValue::bool);
+		if (!isResolutionComplete) {
+			return;
+		}
+		List<EncodeFormat> encodeFormats = new ArrayList<>();
+		for (EncodeFormat value : EncodeFormat.values()) {
+			resStatuses = updatedAttributes.get(value.getStatusName()).l();
+			isResolutionComplete = resStatuses.stream().allMatch(AttributeValue::bool);
+			if (isResolutionComplete) {
+				encodeFormats.add(value);
+			}
+		}
+
+		m3U8Service.updateMasterM3u8(id, encodeFormats);
+
+	}
+
+	private String getStatusAttributeName(EncodeFormat format) {
+		switch (format) {
+			case P144:
+				return "p144Status";
+			case P360:
+				return "p360Status";
+			case P480:
+				return "p480Status";
+			case P720:
+				return "p720Status";
+			default:
+				throw new IllegalArgumentException("Unknown format: " + format);
+		}
 	}
 }

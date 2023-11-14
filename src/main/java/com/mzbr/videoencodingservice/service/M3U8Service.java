@@ -1,8 +1,9 @@
 package com.mzbr.videoencodingservice.service;
 
+import java.util.List;
+
 import com.mzbr.videoencodingservice.enums.EncodeFormat;
-import com.mzbr.videoencodingservice.model.VideoData;
 
 public interface M3U8Service {
-	void updateMasterM3u8(VideoData videoData, EncodeFormat encodeFormat, String masterUrl)throws Exception;
+	void updateMasterM3u8(Long videoId, List<EncodeFormat> encodeFormats)throws Exception;
 }

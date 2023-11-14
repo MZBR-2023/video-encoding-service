@@ -7,7 +7,7 @@ import com.github.kokorin.jaffree.ffmpeg.Input;
 import com.mzbr.videoencodingservice.enums.EncodeFormat;
 
 public interface EncodingService {
-	void processVideo(Long videoSegmentId, EncodeFormat encodeFormat) throws Exception;
+	Integer processVideo(Long videoSegmentId, EncodeFormat encodeFormat) throws Exception;
 	Input prepareVideoInput(String videoOriginUrl) throws Exception;
 	String getScale(EncodeFormat encodeFormat) throws Exception;
 
