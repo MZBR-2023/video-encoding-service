@@ -10,6 +10,6 @@ RUN mkdir /spring
 WORKDIR /spring
 
 
-COPY build/libs/video-editing-service-0.0.1-SNAPSHOT.jar /spring/app.jar
+COPY build/libs/video-encoding-service-0.0.1-SNAPSHOT.jar /spring/app.jar
 
 ENTRYPOINT ["java", "-jar", "/spring/app.jar"]
