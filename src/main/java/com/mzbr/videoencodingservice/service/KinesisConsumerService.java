@@ -49,6 +49,7 @@ public class KinesisConsumerService {
 
 	@PostConstruct
 	public void init() {
+		
 		String shardId = kinesisAsyncClient.listShards(ListShardsRequest.builder()
 				.streamName(STREAM_NAME)
 				.build())
@@ -56,7 +57,7 @@ public class KinesisConsumerService {
 			.shards()
 			.get(0)
 			.shardId();
-
+		log.info("{}: 구독 시작",shardId);
 		String shardIterator = kinesisAsyncClient.getShardIterator(GetShardIteratorRequest.builder()
 				.streamName(STREAM_NAME)
 				.shardId(shardId)
