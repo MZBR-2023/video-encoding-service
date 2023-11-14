@@ -1,21 +1,17 @@
 package com.mzbr.videoencodingservice.model;
 
+
 import javax.persistence.Entity;
-import javax.persistence.EnumType;
-import javax.persistence.Enumerated;
+import javax.persistence.FetchType;
 import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
 import javax.persistence.JoinColumn;
-import javax.persistence.ManyToOne;
 import javax.persistence.OneToOne;
 import javax.persistence.Table;
 
-import com.mzbr.videoencodingservice.enums.EncodeFormat;
-
 import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.Generated;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
@@ -24,17 +20,22 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-@Table(name = "encoded_video_segment")
-public class EncodedVideoSegment {
+@Table(name = "video_data")
+public class VideoData {
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	Long id;
-	String url;
 
-	@Enumerated(EnumType.STRING)
-	EncodeFormat encodeFormat;
+	String masterUrl;
+	String P144Url;
+	String P360Url;
+	String P480Url;
+	String P720Url;
 
-	@ManyToOne
+
+
+	@OneToOne(fetch = FetchType.LAZY)
 	@JoinColumn(name = "video_id")
-	Video video;
+	Video videoEntity;
+
 }

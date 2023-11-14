@@ -14,6 +14,7 @@ import org.springframework.stereotype.Component;
 import lombok.RequiredArgsConstructor;
 import software.amazon.awssdk.core.ResponseBytes;
 import software.amazon.awssdk.core.sync.RequestBody;
+import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectResponse;
@@ -30,6 +31,9 @@ public class S3Util {
 	@Value("${cloud.aws.s3.bucket}")
 	private String BUCKET_NAME;
 	private final S3Presigner s3Presigner;
+
+	@Value("${cloud.aws.s3.url}")
+	private String S3_URL;
 
 	public void uploadFile(String filepath, String fileUploadPath) {
 		PutObjectRequest putObjectRequest = PutObjectRequest.builder()
@@ -72,5 +76,9 @@ public class S3Util {
 		os.write(data);
 		os.close();
 		return myFile.getAbsoluteFile().toPath();
+	}
+
+	public String fileUrl(String fileName){
+		return S3_URL + fileName;
 	}
 }

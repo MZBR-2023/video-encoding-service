@@ -6,6 +6,7 @@ import java.nio.file.Path;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.github.kokorin.jaffree.ffmpeg.FFmpeg;
 import com.github.kokorin.jaffree.ffmpeg.Input;
@@ -13,6 +14,7 @@ import com.github.kokorin.jaffree.ffmpeg.UrlInput;
 import com.github.kokorin.jaffree.ffmpeg.UrlOutput;
 import com.mzbr.videoencodingservice.enums.EncodeFormat;
 import com.mzbr.videoencodingservice.model.EncodedVideoSegment;
+import com.mzbr.videoencodingservice.model.Video;
 import com.mzbr.videoencodingservice.model.VideoSegment;
 import com.mzbr.videoencodingservice.repository.EncodedVideoSegmentRepository;
 import com.mzbr.videoencodingservice.repository.VideoSegmentRepository;
@@ -34,6 +36,7 @@ public class EncodingServiceImpl implements EncodingService {
 	String FOLDER_PREFIX;
 
 	@Override
+	@Transactional
 	public void processVideo(Long videoSegmentId, EncodeFormat encodeFormat) throws Exception {
 
 		//id로 비디오 불러오기
@@ -47,6 +50,7 @@ public class EncodingServiceImpl implements EncodingService {
 
 			//S3 스토리지에 업로드 후 DB에 값 저장
 			uploadAndSave(encodeFormat, videoSegment, filePath);
+
 		} finally {
 			//임시 파일 삭제
 			if (Files.exists(Path.of(filePath))) {
@@ -59,8 +63,17 @@ public class EncodingServiceImpl implements EncodingService {
 		String uploadPath = generateUploadPath(videoSegment, encodeFormat);
 		//s3 업로드
 		uploadToS3(filePath, uploadPath);
+
 		//DB에 저장
 		createAndSaveEncodedSegment(encodeFormat, videoSegment, uploadPath);
+
+		Integer completeCount = encodedVideoSegmentRepository.countByVideoAndEncodeFormat(videoSegment.getVideo(),
+			encodeFormat);
+		if (videoSegment.getVideo().equals(completeCount)) {
+			//비디오 데이터 완료 처리 필요
+		}
+
+
 	}
 
 	private void convertVideo(EncodeFormat encodeFormat, VideoSegment videoSegment, String fileName) throws Exception {
@@ -87,13 +100,13 @@ public class EncodingServiceImpl implements EncodingService {
 
 	}
 
-	private void createAndSaveEncodedSegment(EncodeFormat encodeFormat, VideoSegment videoSegment, String uploadPath) {
+	private EncodedVideoSegment createAndSaveEncodedSegment(EncodeFormat encodeFormat, VideoSegment videoSegment, String uploadPath) {
 		EncodedVideoSegment encodedVideoSegment = EncodedVideoSegment.builder()
 			.encodeFormat(encodeFormat)
-			.videoSegment(videoSegment)
+			.video(videoSegment.getVideo())
 			.url(uploadPath)
 			.build();
-		encodedVideoSegmentRepository.save(encodedVideoSegment);
+		return encodedVideoSegmentRepository.save(encodedVideoSegment);
 	}
 
 	private String generateUploadPath(VideoSegment videoSegment, EncodeFormat encodeFormat) {
