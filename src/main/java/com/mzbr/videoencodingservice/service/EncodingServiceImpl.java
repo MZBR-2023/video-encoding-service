@@ -33,6 +33,7 @@ import lombok.extern.slf4j.Slf4j;
 public class EncodingServiceImpl implements EncodingService {
 	private final VideoSegmentRepository videoSegmentRepository;
 	private final EncodedVideoSegmentRepository encodedVideoSegmentRepository;
+	private final DynamoService dynamoService;
 	private final M3U8Service m3U8Service;
 	private final S3Util s3Util;
 	private static final String CURRENT_WORKING_DIR = System.getProperty("user.dir");
@@ -42,13 +43,9 @@ public class EncodingServiceImpl implements EncodingService {
 
 	private static final Logger logger = LoggerFactory.getLogger(EncodingServiceImpl.class);
 
-
-
-
 	@Override
 	@Transactional
-	public void processVideo(Long videoSegmentId, EncodeFormat encodeFormat) throws Exception {
-
+	public Integer processVideo(Long videoSegmentId, EncodeFormat encodeFormat) throws Exception {
 
 		//id로 비디오 불러오기
 		VideoSegment videoSegment = videoSegmentRepository.findById(videoSegmentId).orElseThrow();
@@ -64,18 +61,21 @@ public class EncodingServiceImpl implements EncodingService {
 
 			log.info("VideoSegmentId: {}, EncodeFormat: {}, Status: Success",
 				videoSegmentId, encodeFormat);
-		}catch (Exception e){
+		} catch (Exception e) {
 			log.error("VideoSegmentId: {}, EncodeFormat: {}, Status: Failure, Error: {}",
 				videoSegmentId, encodeFormat, e.getMessage());
-		}
-
-		finally {
+		} finally {
 
 			//임시 파일 삭제
 			if (Files.exists(Path.of(filePath))) {
 				deleteTemporaryFile(filePath);
 			}
 		}
+		dynamoService.updateEncodingStatusToTrue(videoSegment.getVideo().getId(), encodeFormat,
+			videoSegment.getVideoSequence()
+		);
+
+		return videoSegment.getVideoSequence();
 	}
 
 	private void uploadAndSave(EncodeFormat encodeFormat, VideoSegment videoSegment, String filePath) throws Exception {
@@ -86,15 +86,13 @@ public class EncodingServiceImpl implements EncodingService {
 		//DB에 저장
 		createAndSaveEncodedSegment(encodeFormat, videoSegment, uploadPath);
 
-		Integer completeCount = encodedVideoSegmentRepository.countByVideoAndEncodeFormat(videoSegment.getVideo(),
-			encodeFormat);
-		Video video = videoSegment.getVideo();
-		if (video.getSegmentCount().equals(completeCount)) {
-			//비디오 데이터 완료 처리 필요
-			String masterUrl = FOLDER_PREFIX + "/" + video.getVideoUuid() + "/" + "P144.m3u8";
-			m3U8Service.updateMasterM3u8(videoSegment.getVideo().getVideoData(), encodeFormat,masterUrl);
-		}
-
+		// Integer completeCount = encodedVideoSegmentRepository.countByVideoAndEncodeFormat(videoSegment.getVideo(),
+		// 	encodeFormat);
+		// Video video = videoSegment.getVideo();
+		// if (video.getSegmentCount().equals(completeCount)) {
+		// 	String masterUrl = FOLDER_PREFIX + video.getVideoUuid() + "/" + "master.m3u8";
+		// 	m3U8Service.updateMasterM3u8(videoSegment.getVideo().getVideoData(), encodeFormat,masterUrl);
+		// }
 
 	}
 
@@ -106,11 +104,11 @@ public class EncodingServiceImpl implements EncodingService {
 		fFmpeg.addInput(UrlInput.fromPath(path));
 		// fFmpeg.addInput(prepareVideoInput(videoSegment.getVideoUrl()));
 		//비디오 출력 설정
-		try{
+		try {
 			setVideoExport(encodeFormat, fileName, fFmpeg);
 			//비디오 생성
 			fFmpeg.execute();
-		}finally {
+		} finally {
 			try {
 				Files.delete(path);
 				log.info("Deleted file: {}", path);
@@ -119,10 +117,10 @@ public class EncodingServiceImpl implements EncodingService {
 			}
 		}
 
-
 	}
 
-	private EncodedVideoSegment createAndSaveEncodedSegment(EncodeFormat encodeFormat, VideoSegment videoSegment, String uploadPath) {
+	private EncodedVideoSegment createAndSaveEncodedSegment(EncodeFormat encodeFormat, VideoSegment videoSegment,
+		String uploadPath) {
 		EncodedVideoSegment encodedVideoSegment = EncodedVideoSegment.builder()
 			.encodeFormat(encodeFormat)
 			.video(videoSegment.getVideo())
@@ -135,18 +133,18 @@ public class EncodingServiceImpl implements EncodingService {
 		StringBuilder uploadPath = new StringBuilder(FOLDER_PREFIX);
 		uploadPath.append(videoSegment.getVideoName()).append("/");
 		uploadPath.append(encodeFormat.name()).append("/");
-		uploadPath.append(String.format("%03d",videoSegment.getVideoSequence())).append(".ts");
+		uploadPath.append(String.format("%03d", videoSegment.getVideoSequence())).append(".ts");
 		return uploadPath.toString();
 	}
 
 	private void setVideoExport(EncodeFormat encodeFormat, String fileName, FFmpeg fFmpeg) throws Exception {
 		fFmpeg.addOutput(UrlOutput.toPath(Path.of(fileName))
-				.addArguments("-c:v", "libx264")
-				.addArguments("-profile:v", "baseline")
-				.addArguments("-c:a", "aac")
-				.addArguments("-vf", getScale(encodeFormat))
-				.addArguments("-b:v", encodeFormat.getBitRateK() + "K")
-				.addArgument("-copyts")
+			.addArguments("-c:v", "libx264")
+			.addArguments("-profile:v", "baseline")
+			.addArguments("-c:a", "aac")
+			.addArguments("-vf", getScale(encodeFormat))
+			.addArguments("-b:v", encodeFormat.getBitRateK() + "K")
+			.addArgument("-copyts")
 
 		);
 	}
