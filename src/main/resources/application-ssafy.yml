@@ -5,6 +5,7 @@ spring:
     import: s3-local.yml, kinesis-local.yml, dynamo-local.yml, database-local.yml
   jpa:
     hibernate:
+
       ddl-auto: update
     properties:
       hibernate:
@@ -20,3 +21,4 @@ folder:
   prefix: "encoded-video/"
 server:
   port: 0
+
