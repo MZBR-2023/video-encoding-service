@@ -10,6 +10,8 @@ import javax.persistence.JoinColumn;
 import javax.persistence.OneToOne;
 import javax.persistence.Table;
 
+import com.mzbr.videoencodingservice.enums.EncodeFormat;
+
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -37,5 +39,24 @@ public class VideoData {
 	@OneToOne(fetch = FetchType.LAZY)
 	@JoinColumn(name = "video_id")
 	Video videoEntity;
+
+	public void updateMasterUrl(String masterUrl) {
+		this.masterUrl = masterUrl;
+	}
+
+	public String getUrlByEncodeFormat(EncodeFormat encodeFormat) {
+		switch (encodeFormat) {
+			case P144:
+				return getP144Url();
+			case P360:
+				return getP360Url();
+			case P480:
+				return getP480Url();
+			case P720:
+				return getP720Url();
+			default:
+				return null;
+		}
+	}
 
 }

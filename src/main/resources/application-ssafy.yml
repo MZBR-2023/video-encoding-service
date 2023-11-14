@@ -1,3 +1,4 @@
+
 spring:
   h2:
     console:
@@ -12,10 +13,12 @@ spring:
     hibernate:
       ddl-auto: create
   config:
-    import: s3-local.yml
+    import: s3-local.yml, kine
 #logging:
 #  level:
 #    com.mzbr: DEBUG
 #    root: DEBUG
 folder:
   prefix: "encoded-video/"
+server:
+  port: 8081

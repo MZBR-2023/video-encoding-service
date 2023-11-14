@@ -12,6 +12,7 @@ import com.github.kokorin.jaffree.ffmpeg.FFmpeg;
 import com.github.kokorin.jaffree.ffmpeg.Input;
 import com.github.kokorin.jaffree.ffmpeg.UrlInput;
 import com.github.kokorin.jaffree.ffmpeg.UrlOutput;
+import com.mzbr.videoencodingservice.VideoEncodingServiceApplication;
 import com.mzbr.videoencodingservice.enums.EncodeFormat;
 import com.mzbr.videoencodingservice.model.EncodedVideoSegment;
 import com.mzbr.videoencodingservice.model.Video;
@@ -29,6 +30,7 @@ import lombok.extern.slf4j.Slf4j;
 public class EncodingServiceImpl implements EncodingService {
 	private final VideoSegmentRepository videoSegmentRepository;
 	private final EncodedVideoSegmentRepository encodedVideoSegmentRepository;
+	private final M3U8Service m3U8Service;
 	private final S3Util s3Util;
 	private static final String CURRENT_WORKING_DIR = System.getProperty("user.dir");
 
@@ -59,7 +61,7 @@ public class EncodingServiceImpl implements EncodingService {
 		}
 	}
 
-	private void uploadAndSave(EncodeFormat encodeFormat, VideoSegment videoSegment, String filePath) {
+	private void uploadAndSave(EncodeFormat encodeFormat, VideoSegment videoSegment, String filePath) throws Exception {
 		String uploadPath = generateUploadPath(videoSegment, encodeFormat);
 		//s3 업로드
 		uploadToS3(filePath, uploadPath);
@@ -69,8 +71,11 @@ public class EncodingServiceImpl implements EncodingService {
 
 		Integer completeCount = encodedVideoSegmentRepository.countByVideoAndEncodeFormat(videoSegment.getVideo(),
 			encodeFormat);
-		if (videoSegment.getVideo().equals(completeCount)) {
+		Video video = videoSegment.getVideo();
+		if (video.getSegmentCount().equals(completeCount)) {
 			//비디오 데이터 완료 처리 필요
+			String masterUrl = FOLDER_PREFIX + "/" + video.getVideoUuid() + "/" + "P144.m3u8";
+			m3U8Service.updateMasterM3u8(videoSegment.getVideo().getVideoData(), encodeFormat,masterUrl);
 		}
 
 

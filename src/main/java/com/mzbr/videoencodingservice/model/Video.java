@@ -28,6 +28,7 @@ public class Video {
 	Long id;
 
 	Integer segmentCount;
+	String videoUuid;
 
 	@OneToOne(mappedBy = "videoEntity", fetch = FetchType.LAZY)
 	VideoData videoData;
