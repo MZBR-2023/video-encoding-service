@@ -1,7 +1,6 @@
 package com.mzbr.videoencodingservice.service;
 
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.PostConstruct;
@@ -10,8 +9,8 @@ import java.nio.charset.StandardCharsets;
 import java.util.NoSuchElementException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
+import java.util.concurrent.Semaphore;
 
-import com.mzbr.videoencodingservice.VideoEncodingServiceApplication;
 import com.mzbr.videoencodingservice.enums.EncodeFormat;
 import com.mzbr.videoencodingservice.model.VideoEncodingDynamoTable;
 
@@ -33,6 +32,7 @@ public class KinesisConsumerService {
 	private final KinesisAsyncClient kinesisAsyncClient;
 	private final DynamoService dynamoService;
 	private final EncodingService encodingService;
+	private final Semaphore permits = new Semaphore(2); // 동시에 처리할 수 있는 레코드 수
 
 	@Value("${cloud.aws.kinesis.consumer-name}")
 	private String STREAM_NAME;
@@ -46,9 +46,8 @@ public class KinesisConsumerService {
 	private static final String COMPLETED_STATUS = "completed";
 	private static final String FAILED_STATUS = "failed";
 
-
 	@PostConstruct
-	public void init() {
+	public void init() throws InterruptedException {
 		String shardId = kinesisAsyncClient.listShards(ListShardsRequest.builder()
 				.streamName(STREAM_NAME)
 				.build())
@@ -56,7 +55,6 @@ public class KinesisConsumerService {
 			.shards()
 			.get(0)
 			.shardId();
-
 		String shardIterator = kinesisAsyncClient.getShardIterator(GetShardIteratorRequest.builder()
 				.streamName(STREAM_NAME)
 				.shardId(shardId)
@@ -71,18 +69,24 @@ public class KinesisConsumerService {
 		CompletableFuture<GetRecordsResponse> getRecordsFuture = kinesisAsyncClient.getRecords(
 			GetRecordsRequest.builder()
 				.shardIterator(shardIterator)
-				.limit(1000)
+				.limit(2)
 				.build());
-
 		getRecordsFuture.thenAcceptAsync(getRecordsResponse -> {
 			getRecordsResponse.records().forEach(record -> {
-				String data = StandardCharsets.UTF_8.decode(record.data().asByteBuffer()).toString();
 				try {
-					updateAndProcessJob(data);
-				}catch (Exception e){
-					e.printStackTrace();
-				}
+					permits.acquire();
+					String data = StandardCharsets.UTF_8.decode(record.data().asByteBuffer()).toString();
+					updateAndProcessJob(data)
+						.whenComplete((result, throwable) -> {
+							permits.release();
+							if (throwable != null) {
+								log.error("{} 작업을 제대로 처리하지 못 했습니다.", data);
+							}
+						});
 
+				} catch (InterruptedException e) {
+					Thread.currentThread().interrupt();
+				}
 			});
 
 			String nextShardIterator = getRecordsResponse.nextShardIterator();
@@ -98,33 +102,30 @@ public class KinesisConsumerService {
 		});
 	}
 
-	@Async
 	public CompletableFuture<Void> updateAndProcessJob(String id) {
-
 		return CompletableFuture.supplyAsync(() -> {
-			VideoEncodingDynamoTable videoEncodingDynamoTable = dynamoService.getVideoEncodingDynamoTable(JOB_TABLE, JOB_ID, id);
-			if(videoEncodingDynamoTable==null){
-				return null;
+			VideoEncodingDynamoTable videoEncodingDynamoTable = dynamoService.getVideoEncodingDynamoTable(JOB_TABLE,
+				JOB_ID, id);
+			if (videoEncodingDynamoTable == null) {
+				throw new CompletionException(new NoSuchElementException("조건을 만족하지 않는 작업: " + id));
 			}
 			if (!WAITING_STATUS.equals(videoEncodingDynamoTable.getStatus())) {
-				return null;
+
+				throw new CompletionException(new NoSuchElementException("조건을 만족하지 않는 작업: " + id));
 			}
 
-			if (updateStatusToInProgressIfWaiting(id))
-				return null;
+			if (updateStatusToInProgressIfWaiting(id)) {
+				throw new CompletionException(new NoSuchElementException("조건을 만족하지 않는 작업: " + id));
+			}
 
 			return videoEncodingDynamoTable;
-		}).thenCompose(videoEncodingDynamoTable -> {
-			if (videoEncodingDynamoTable == null) {
-				return CompletableFuture.completedFuture(null);
-			}
-			return processJob(videoEncodingDynamoTable);
-		}).thenRun(() -> {
-			updateJobStatus(id, COMPLETED_STATUS);
+		}).thenCompose(videoEncodingDynamoTable -> processJob(videoEncodingDynamoTable)).thenRun(() -> {
+			updateJobStatus(id, COMPLETED_STATUS); // 상태를 완료로 변경
 		}).exceptionally(e -> {
-			if(e instanceof NoSuchElementException){
+			if (e.getCause() instanceof NoSuchElementException) {
 				return null;
 			}
+
 			updateJobStatus(id, FAILED_STATUS);
 			return null;
 		});
@@ -144,8 +145,9 @@ public class KinesisConsumerService {
 	private CompletableFuture<Void> processJob(VideoEncodingDynamoTable videoEncodingDynamoTable) {
 		return CompletableFuture.runAsync(() -> {
 			try {
-				encodingService.processVideo(videoEncodingDynamoTable.getRdbId(), EncodeFormat.getFormatByString(
-					videoEncodingDynamoTable.getFormat()));
+				encodingService.processVideo(videoEncodingDynamoTable.getRdbId(),
+					EncodeFormat.getFormatByString(videoEncodingDynamoTable.getFormat()));
+
 			} catch (Exception e) {
 				throw new RuntimeException(e);
 			}
