@@ -127,7 +127,7 @@ public class KinesisConsumerService {
 			if (e.getCause() instanceof NoSuchElementException) {
 				return null;
 			}
-
+			e.printStackTrace();
 			updateJobStatus(id, FAILED_STATUS);
 			return null;
 		});
