@@ -46,8 +46,8 @@ public class KinesisConsumerService {
 	private static final String COMPLETED_STATUS = "completed";
 	private static final String FAILED_STATUS = "failed";
 
-	@PostConstruct
-	public void init() throws InterruptedException {
+
+	public void init() {
 		String shardId = kinesisAsyncClient.listShards(ListShardsRequest.builder()
 				.streamName(STREAM_NAME)
 				.build())
