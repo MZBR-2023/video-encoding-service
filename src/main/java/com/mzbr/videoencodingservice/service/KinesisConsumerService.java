@@ -74,11 +74,15 @@ public class KinesisConsumerService {
 		getRecordsFuture.thenAcceptAsync(getRecordsResponse -> {
 			getRecordsResponse.records().forEach(record -> {
 				try {
-					permits.acquire();
+					
 					String data = StandardCharsets.UTF_8.decode(record.data().asByteBuffer()).toString();
+					log.info("{} 작업을 기다립니다",data);
+					permits.acquire();
+					log.info("{} 작업을 시작했습니다",data);
 					updateAndProcessJob(data)
 						.whenComplete((result, throwable) -> {
 							permits.release();
+							log.info("{} 작업을 반환했습니다",data);
 							if (throwable != null) {
 								log.error("{} 작업을 제대로 처리하지 못 했습니다.", data);
 							}
