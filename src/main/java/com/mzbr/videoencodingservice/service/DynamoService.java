@@ -79,7 +79,7 @@ public class DynamoService {
 	}
 
 	public void updateEncodingStatusToTrue(Long id, EncodeFormat format, int index) throws Exception {
-		String attributeName = getStatusAttributeName(format);
+		String attributeName = format.getStatusName();
 
 		String updateExpression = String.format("SET %s[%d] = :status", attributeName, index);
 
@@ -101,7 +101,6 @@ public class DynamoService {
 
 	private void checkUpdateAll(Long id, Map<String, AttributeValue> updatedAttributes, EncodeFormat encodeFormat) throws
 		Exception {
-		System.out.println(updatedAttributes);
 		List<AttributeValue> resStatuses = updatedAttributes.get(encodeFormat.getStatusName()).l();
 		boolean isResolutionComplete = resStatuses.stream().allMatch(AttributeValue::bool);
 		if (!isResolutionComplete) {
@@ -118,20 +117,5 @@ public class DynamoService {
 
 		m3U8Service.updateMasterM3u8(id, encodeFormats);
 
-	}
-
-	private String getStatusAttributeName(EncodeFormat format) {
-		switch (format) {
-			case P144:
-				return "p144Status";
-			case P360:
-				return "p360Status";
-			case P480:
-				return "p480Status";
-			case P720:
-				return "p720Status";
-			default:
-				throw new IllegalArgumentException("Unknown format: " + format);
-		}
 	}
 }
