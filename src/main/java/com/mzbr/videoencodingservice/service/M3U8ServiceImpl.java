@@ -80,7 +80,7 @@ public class M3U8ServiceImpl implements M3U8Service {
 			encodeFormat.getBandwidth(),
 			encodeFormat.getWidth(),
 			encodeFormat.getHeight(),
-			videoData.getUrlByEncodeFormat(encodeFormat)
+			s3Util.fileUrl(videoData.getUrlByEncodeFormat(encodeFormat))
 		);
 		lines.add(newEntry);
 
