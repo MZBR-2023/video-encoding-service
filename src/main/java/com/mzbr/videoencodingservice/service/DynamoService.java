@@ -101,7 +101,6 @@ public class DynamoService {
 
 	private void checkUpdateAll(Long id, Map<String, AttributeValue> updatedAttributes, EncodeFormat encodeFormat) throws
 		Exception {
-		System.out.println(updatedAttributes);
 		List<AttributeValue> resStatuses = updatedAttributes.get(encodeFormat.getStatusName()).l();
 		boolean isResolutionComplete = resStatuses.stream().allMatch(AttributeValue::bool);
 		if (!isResolutionComplete) {
