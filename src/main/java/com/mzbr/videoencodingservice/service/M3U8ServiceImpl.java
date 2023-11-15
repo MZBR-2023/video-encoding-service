@@ -34,7 +34,6 @@ public class M3U8ServiceImpl implements M3U8Service {
 	@Transactional
 	public void updateMasterM3u8(Long videoId, List<EncodeFormat> encodeFormats) throws Exception {
 		Video video = videoRepository.findById(videoId).orElseThrow();
-		System.out.println(video);
 		// m3u8 파일을 만듭니다.
 		Path newM3u8Path = null;
 
@@ -46,7 +45,6 @@ public class M3U8ServiceImpl implements M3U8Service {
 
 			// DB에 masterUrl을 업데이트합니다.
 			if (video.getVideoData().getMasterUrl() == null) {
-				System.out.println(masterUrl);
 				video.getVideoData().updateMasterUrl(masterUrl);
 			}
 
