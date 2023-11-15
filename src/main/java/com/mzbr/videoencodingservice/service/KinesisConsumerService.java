@@ -47,6 +47,7 @@ public class KinesisConsumerService {
 	private static final String FAILED_STATUS = "failed";
 
 
+	@PostConstruct
 	public void init() {
 		String shardId = kinesisAsyncClient.listShards(ListShardsRequest.builder()
 				.streamName(STREAM_NAME)
@@ -66,7 +67,6 @@ public class KinesisConsumerService {
 	}
 
 	private void pollShard(String shardIterator) {
-		log.info("poll 중...");
 		CompletableFuture<GetRecordsResponse> getRecordsFuture = kinesisAsyncClient.getRecords(
 			GetRecordsRequest.builder()
 				.shardIterator(shardIterator)
@@ -77,13 +77,10 @@ public class KinesisConsumerService {
 				try {
 					
 					String data = StandardCharsets.UTF_8.decode(record.data().asByteBuffer()).toString();
-					log.info("{} 작업을 기다립니다",data);
 					permits.acquire();
-					log.info("{} 작업을 시작했습니다",data);
 					updateAndProcessJob(data)
 						.whenComplete((result, throwable) -> {
 							permits.release();
-							log.info("{} 작업을 반환했습니다",data);
 							if (throwable != null) {
 								log.error("{} 작업을 제대로 처리하지 못 했습니다.", data);
 							}
