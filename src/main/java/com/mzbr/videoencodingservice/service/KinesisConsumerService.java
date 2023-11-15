@@ -66,6 +66,7 @@ public class KinesisConsumerService {
 	}
 
 	private void pollShard(String shardIterator) {
+		log.info("poll 중...");
 		CompletableFuture<GetRecordsResponse> getRecordsFuture = kinesisAsyncClient.getRecords(
 			GetRecordsRequest.builder()
 				.shardIterator(shardIterator)
